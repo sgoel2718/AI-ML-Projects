@@ -22,10 +22,10 @@ jobs:
             exit 0
           fi
           host=$(echo "$HF_SPACE" | tr 'A-Z' 'a-z' | tr '/_.' '---')
-          for path in "" "static/engine.js" "data/metrics.json" "data/spam_model.json"; do
-            url="https://$host.hf.space/$path"
+          for path in "" "static/engine.js" "data/metrics.json" "data/spam_model.json.gz"; do
+            url="https://$host.static.hf.space/$path"
             code=$(curl -s -o /dev/null -w "%{http_code}" --retry 3 --retry-delay 20 "$url")
             echo "$code  $url"
             [ "$code" = "200" ] || { echo "::error::$url answered $code. Check the Space page on Hugging Face."; exit 1; }
           done
-          echo "TextPulse is live at https://$host.hf.space"
+          echo "TextPulse is live at https://$host.static.hf.space"

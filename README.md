@@ -8,7 +8,7 @@ Machine learning and AI projects by **Shubham**, a full-stack developer (C#, ASP
 
 ![TextPulse dashboard](textpulse/docs/dashboard.png)
 
-**Live demo: [shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)**
+**Live demo: [shubham2019-textpulse.static.hf.space](https://shubham2019-textpulse.static.hf.space)**
 
 Two text classifiers trained on **1.64 million real messages**, streamed live through a web dashboard that shows every prediction, the words that drove it, and running accuracy against the true labels.
 
@@ -20,7 +20,7 @@ Two text classifiers trained on **1.64 million real messages**, streamed live th
 | **Stack** | Python, scikit-learn (TF-IDF, Naive Bayes, Logistic Regression), pandas, FastAPI, WebSockets, JavaScript, Chart.js, pytest |
 | **Highlights** | Real-time WebSocket stream, explainable predictions, model comparison, safe display mode for presentations, REST API with auto-generated docs, models exported to run in the browser, CI/CD deployment to a free Hugging Face Space with GitHub Actions |
 
-[Live demo](https://shubham2019-textpulse.hf.space) · [Project README](textpulse/README.md) · [Code walkthrough](textpulse/docs/CODE_WALKTHROUGH.md) · [Run it in VS Code](textpulse/docs/RUN_IN_VSCODE.md) · [Live deployment](textpulse/docs/DEPLOY.md)
+[Live demo](https://shubham2019-textpulse.static.hf.space) · [Project README](textpulse/README.md) · [Code walkthrough](textpulse/docs/CODE_WALKTHROUGH.md) · [Run it in VS Code](textpulse/docs/RUN_IN_VSCODE.md) · [Live deployment](textpulse/docs/DEPLOY.md)
 
 ## Coming next
 

@@ -80,5 +80,5 @@ jobs:
           )
           host = space.lower().replace("/", "-").replace("_", "-").replace(".", "-")
           print(f"Deployed. Space page: https://huggingface.co/spaces/{space}")
-          print(f"Live app: https://{host}.hf.space")
+          print(f"Live app: https://{host}.static.hf.space")
           EOF

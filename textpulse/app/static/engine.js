@@ -108,10 +108,19 @@
   let listener = null;
   let ready = null;
 
-  const getJson = (name) => fetch(DATA + name).then((r) => {
-    if (!r.ok) throw new Error(`Could not load ${name}`);
-    return r.json();
-  });
+  // Load one data file. The big ones are gzip-compressed (.json.gz), so we
+  // unzip them here with the browser's built-in DecompressionStream.
+  async function getJson(name) {
+    const response = await fetch(DATA + name);
+    if (!response.ok) throw new Error(`Could not load ${name}`);
+    let bytes = new Uint8Array(await response.arrayBuffer());
+    const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;   // every gzip file starts with these two bytes
+    if (isGzip) {
+      const unzipped = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+      bytes = new Uint8Array(await new Response(unzipped).arrayBuffer());
+    }
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
 
   // Shuffle a list in place (Fisher-Yates), so each visit sees a different order
   function shuffle(list) {
@@ -125,8 +134,8 @@
   function loadEverything() {
     return Promise.all([
       getJson("metrics.json"),
-      getJson("spam_model.json"), getJson("stream_spam.json"),
-      getJson("sentiment_model.json"), getJson("stream_sentiment.json"),
+      getJson("spam_model.json.gz"), getJson("stream_spam.json.gz"),
+      getJson("sentiment_model.json.gz"), getJson("stream_sentiment.json.gz"),
     ]).then(([loadedMetrics, spamModel, spamStream, sentimentModel, sentimentStream]) => {
       const { safe_display, ...scores } = loadedMetrics;
       metrics = scores;
@@ -150,6 +159,7 @@
   // ---- The live stream: like run_live_stream() in app/main.py --------------
   let nextTask = 0;
   let owed = 0;               // messages due but not yet sent (speed x time)
+  let lastTick = performance.now();
 
   function classifyOne() {
     const task = nextTask++ % 2 === 0 ? "spam" : "sentiment";   // alternate the two
@@ -175,9 +185,16 @@
   }
 
   function tick() {
+    // Use the real time since the last tick: browsers slow timers down in
+    // background tabs, and this keeps the speed right anyway (max 1 second's worth).
+    const now = performance.now();
+    const seconds = Math.min((now - lastTick) / 1000, 1);
+    lastTick = now;
     if (!stream.paused && listener) {
-      owed += (stream.speed * TICK_MS) / 1000;     // e.g. 20 msg/s x 0.05 s = 1 message
+      owed += stream.speed * seconds;              // e.g. 20 msg/s x 0.05 s = 1 message
       while (owed >= 1) { listener(classifyOne()); owed -= 1; }
+    } else {
+      owed = 0;
     }
     setTimeout(tick, TICK_MS);
   }

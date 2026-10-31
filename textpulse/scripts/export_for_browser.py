@@ -16,11 +16,15 @@ maths in JavaScript. The script checks that its own copy of that maths agrees
 with scikit-learn before saving anything.
 
 Creates deploy/browser/data/:
-    spam_model.json, sentiment_model.json   words, IDF values, weights, bias
-    stream_spam.json, stream_sentiment.json unseen test messages for the stream
-    metrics.json                            test scores + bulk benchmark
+    spam_model.json.gz, sentiment_model.json.gz     words, IDF values, weights, bias
+    stream_spam.json.gz, stream_sentiment.json.gz   unseen test messages for the stream
+    metrics.json                                    test scores + bulk benchmark
+
+The big files are gzip-compressed (17 MB -> 5 MB), because the hosting serves
+them as they are; engine.js unzips them in the browser.
 """
 
+import gzip
 import json
 import math
 import re
@@ -106,7 +110,10 @@ def export_stream(stream_file, sample_size):
 
 def save(name, data):
     path = OUTPUT_DIR / name
-    path.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    if name.endswith(".gz"):
+        text = gzip.compress(text, compresslevel=9, mtime=0)   # mtime=0: same input, same file
+    path.write_bytes(text)
     print(f"  saved {path.relative_to(PROJECT_DIR)} ({path.stat().st_size / 1e6:.1f} MB)")
 
 
@@ -117,8 +124,8 @@ def main():
         model = export_model(model_file)
         stream = export_stream(stream_file, sample_size)
         check_against_sklearn(model_file, model, [text for _, text, _ in stream[:3000]])
-        save(f"{task}_model.json", model)
-        save(f"stream_{task}.json", stream)
+        save(f"{task}_model.json.gz", model)
+        save(f"stream_{task}.json.gz", stream)
 
     metrics = json.loads(METRICS_FILE.read_text())
     if BENCHMARK_FILE.exists():

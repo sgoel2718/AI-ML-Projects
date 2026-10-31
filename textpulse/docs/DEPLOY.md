@@ -1,6 +1,6 @@
 # Deploying TextPulse live (Hugging Face static Space + GitHub Actions)
 
-**Live site: [shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)** · Space page: [huggingface.co/spaces/Shubham2019/textpulse](https://huggingface.co/spaces/Shubham2019/textpulse)
+**Live site: [shubham2019-textpulse.static.hf.space](https://shubham2019-textpulse.static.hf.space)** · Space page: [huggingface.co/spaces/Shubham2019/textpulse](https://huggingface.co/spaces/Shubham2019/textpulse)
 
 ## Why a static Space
 
@@ -65,6 +65,6 @@ The push redeploys the site.
 
 ## Limits to know
 
-- **Download size:** a visitor's browser downloads about 17 MB once (the two models and the test messages), which takes a few seconds on a normal connection. The status badge shows "Loading models" until it's ready.
+- **Download size:** a visitor's browser downloads about 5 MB once (the two models and the test messages, gzip-compressed from 17 MB; `engine.js` unzips them), which takes a few seconds on a normal connection. The status badge shows "Loading models" until it's ready.
 - **Stream sample:** the live site replays all 7,133 spam test messages and a random 20,000 of the 320,000 test tweets, to keep the download small. Accuracy on the sample matches the full test set.
 - **Scheduled workflows** in a repository with no new commits for 60 days are paused by GitHub. That only stops the daily check, not the site.

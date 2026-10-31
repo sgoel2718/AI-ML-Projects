@@ -2,7 +2,7 @@
 
 **Real-time spam detection and sentiment analysis on 1.6 million messages, with a live web dashboard.**
 
-**Live demo: [shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)**
+**Live demo: [shubham2019-textpulse.static.hf.space](https://shubham2019-textpulse.static.hf.space)**
 
 TextPulse trains two text classifiers on public Kaggle datasets, then streams messages the models have never seen through them in real time. A live dashboard shows each prediction as it happens, the words that drove it, running accuracy against the true labels, and trend charts.
 
@@ -59,7 +59,7 @@ New to the code? [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) gives a quick tour
 
 ## Live demo
 
-**[shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)**
+**[shubham2019-textpulse.static.hf.space](https://shubham2019-textpulse.static.hf.space)**
 
 The live site is a free Hugging Face static Space, deployed automatically by GitHub Actions on every push. There is no server behind it: `scripts/export_for_browser.py` exports both trained models to JSON, and `app/static/engine.js` runs the same TF-IDF and logistic regression maths in the visitor's browser (checked to agree with scikit-learn on 100% of 6,000 test messages). That makes it free and always on, with no sleeping. Run locally, the same dashboard talks to the FastAPI server instead. Setup and details: [docs/DEPLOY.md](docs/DEPLOY.md).
 
