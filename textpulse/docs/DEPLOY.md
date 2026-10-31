@@ -1,71 +1,70 @@
-# Deploying TextPulse live (Hugging Face Spaces + GitHub Actions)
+# Deploying TextPulse live (Hugging Face static Space + GitHub Actions)
 
-TextPulse runs live on a free [Hugging Face Space](https://huggingface.co/spaces). Two GitHub Actions in this repository manage it:
+**Live site: [shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)** · Space page: [huggingface.co/spaces/Shubham2019/textpulse](https://huggingface.co/spaces/Shubham2019/textpulse)
+
+## Why a static Space
+
+Hugging Face Spaces come in two kinds:
+
+| Kind | What it runs | Free? |
+| --- | --- | --- |
+| **Docker / Gradio** | A server (here, FastAPI) | Needs a Hugging Face PRO subscription |
+| **Static** | Only files: HTML, JavaScript, JSON | Free for everyone, and **never sleeps** |
+
+TextPulse uses a static Space. The trick is that the server isn't needed on the live site, because the models can run in the visitor's browser:
+
+1. Both models are Logistic Regression on TF-IDF numbers. A prediction only needs each word's **IDF value**, each word's **weight**, and one **bias**:
+   `probability = sigmoid(sum(tfidf value × weight) + bias)`.
+2. `scripts/export_for_browser.py` saves those numbers as JSON in `deploy/browser/data/`, together with the unseen test messages for the stream. Before saving, it checks that its copy of the maths agrees with scikit-learn. It does: same label on 100% of 6,000 test messages, with probabilities within 0.0001.
+3. `app/static/engine.js` repeats the same steps in JavaScript (clean the text, split into words and word pairs, TF-IDF, sigmoid) and plays the role of the server: the live stream, pause, speed, and *Analyse your own text*.
+4. `app/static/app.js` asks the same questions either way. When `engine.js` is loaded, the answers come from the browser; otherwise they come from the FastAPI server.
+
+**One difference:** on the live site every visitor gets their own stream, so pausing affects only your screen. On the FastAPI server, everyone shares one stream.
+
+## How it deploys
 
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
-| `deploy-textpulse.yml` | Every push that changes `textpulse/`, or when you click **Run workflow** | Builds the Space folder and uploads it to Hugging Face, which rebuilds the app (3–5 minutes) |
-| `keepalive-textpulse.yml` | Every 6 hours | Visits the app so the free Space never reaches its 48-hour sleep limit, and restarts it if it has stopped or crashed |
+| `deploy-textpulse.yml` | Every push that changes `textpulse/app/static/` or `textpulse/deploy/browser/`, or when you click **Run workflow** | Builds the site folder and uploads it to the Space. It's live within a minute. |
+| `keepalive-textpulse.yml` ("Check TextPulse is live") | Once a day | Opens the site and its model files. If any don't answer, the run fails and GitHub emails you. |
 
-This is **CI/CD** (continuous integration and deployment): GitHub is the single source of truth, and the live app updates itself whenever the code changes.
+This is **CI/CD** (continuous integration and deployment): GitHub is the single source of truth, and the live site updates itself whenever the code changes.
 
-## One-time setup (about 10 minutes)
+What the deploy uploads:
 
-### 1. Create a Hugging Face account
-Sign up at [huggingface.co/join](https://huggingface.co/join) and verify your email. You don't need to create the Space; the deploy workflow creates it.
+| From | Goes to the Space as |
+| --- | --- |
+| `app/static/index.html` | `index.html`, with `engine.js` added before `app.js` |
+| `app/static/` (CSS, JS, Chart.js) | `static/` |
+| `deploy/browser/data/` | `data/`: the two models, the stream messages and the scores |
+| `deploy/browser/SPACE_README.md` | `README.md`: the Space settings (`sdk: static`) and description |
 
-### 2. Create a Hugging Face access token
-1. Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) → **Create new token**.
-2. Choose **Write** as the token type, and name it `github-deploy`.
-3. Click **Create token** and **copy it**. You'll only see it once.
+## One-time setup (already done for this repository)
 
-Treat the token like a password. Never paste it into code, a chat or a commit. It only goes into GitHub's encrypted secrets in the next step.
+1. **Hugging Face token:** [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) → **Create new token** → type **Write**, name `github-deploy`. Copy it; it's shown only once. Treat it like a password and never put it in code, chat or a commit.
+2. **GitHub settings:** this repository → **Settings → Secrets and variables → Actions**
+   - **Secrets** → **New repository secret**: name `HF_TOKEN`, value = the token.
+   - **Variables** → **New repository variable**: name `HF_SPACE`, value `Shubham2019/textpulse`.
+3. **First deploy:** **Actions** → **Deploy TextPulse to Hugging Face** → **Run workflow**. The workflow creates the Space if it doesn't exist.
 
-### 3. Add the token and Space name to GitHub
-In this repository on GitHub, open **Settings → Secrets and variables → Actions**.
+## After you retrain the models
 
-1. **Secrets** tab → **New repository secret**
-   - Name: `HF_TOKEN`
-   - Secret: paste the token → **Add secret**
-2. **Variables** tab → **New repository variable**
-   - Name: `HF_SPACE`
-   - Value: `your-huggingface-username/textpulse` → **Add variable**
-
-### 4. Run the first deployment
-**Actions** tab → **Deploy TextPulse to Hugging Face** → **Run workflow** → **Run workflow**.
-
-When it finishes (about 1 minute), its log prints the Space page and the live link. Hugging Face then builds the app for 3–5 minutes. Your live link is:
+The live site uses the JSON export, not the `.joblib` files, so export again after training:
 
 ```
-https://<your-huggingface-username>-textpulse.hf.space
+python -m src.train
+python -m scripts.export_for_browser
+git add textpulse/deploy/browser && git commit -m "Retrained models" && git push
 ```
 
-### 5. Start the keep-alive
-**Actions** tab → **Keep TextPulse awake** → **Run workflow** once. After that it runs automatically every 6 hours.
+The push redeploys the site.
 
-## Everyday use
+## The Docker option (Hugging Face PRO)
 
-- **Change the app:** push to `main`. The Space redeploys itself.
-- **Check the app:** open the **Logs** tab on the Space page.
-- **Pause the app on purpose:** use **Settings → Pause** on the Space. The keep-alive won't restart a paused Space.
-
-## What gets deployed
-
-The deploy workflow combines the current code with pinned settings from `textpulse/deploy/`:
-
-| From | Goes to the Space as | Why |
-| --- | --- | --- |
-| `textpulse/app/`, `textpulse/src/` | `app/`, `src/` | The application code |
-| `textpulse/deploy/Dockerfile` | `Dockerfile` | How Hugging Face builds and starts the app (port 7860) |
-| `textpulse/deploy/requirements.txt` | `requirements.txt` | **Exact** library versions the models were trained with |
-| `textpulse/deploy/SPACE_README.md` | `README.md` | The Space's settings (`sdk: docker`, `app_port: 7860`) and description |
-| `textpulse/deploy/models/` | `models/` | The trained models and the test messages for the live stream |
-
-The trained models in `textpulse/deploy/models/` were created with scikit-learn 1.9.1 on Python 3.13, which is why `deploy/requirements.txt` pins those exact versions. A model saved by one scikit-learn version may not load in another. If you retrain, copy the new files from `textpulse/models/` into `textpulse/deploy/models/` **and** update the versions in `deploy/requirements.txt` to the ones you trained with (`pip freeze` shows them).
+`deploy/docker/` contains everything needed to run the real FastAPI server as a Docker Space instead (Dockerfile, pinned library versions, the `.joblib` models). Hugging Face only hosts Docker Spaces on a PRO subscription. To use it, change the deploy workflow to assemble the Space from `deploy/docker/`, `app/` and `src/`, and set `space_sdk="docker"`.
 
 ## Limits to know
 
-- **Free hardware:** 2 CPUs and 16 GB of RAM, which is plenty for TextPulse.
-- **One shared stream:** everyone who opens the link sees the same stream. Pausing it pauses it for everyone.
-- **Scheduled workflows** in a repository with no new commits for 60 days are paused by GitHub. GitHub emails you first; re-enable it in the **Actions** tab, or push any change.
-- **Hugging Face maintenance** can restart the Space. It comes back on its own, and the keep-alive restarts it if needed.
+- **Download size:** a visitor's browser downloads about 17 MB once (the two models and the test messages), which takes a few seconds on a normal connection. The status badge shows "Loading models" until it's ready.
+- **Stream sample:** the live site replays all 7,133 spam test messages and a random 20,000 of the 320,000 test tweets, to keep the download small. Accuracy on the sample matches the full test set.
+- **Scheduled workflows** in a repository with no new commits for 60 days are paused by GitHub. That only stops the daily check, not the site.

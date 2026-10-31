@@ -2,6 +2,8 @@
 
 **Real-time spam detection and sentiment analysis on 1.6 million messages, with a live web dashboard.**
 
+**Live demo: [shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)**
+
 TextPulse trains two text classifiers on public Kaggle datasets, then streams messages the models have never seen through them in real time. A live dashboard shows each prediction as it happens, the words that drove it, running accuracy against the true labels, and trend charts.
 
 ![TextPulse dashboard](docs/dashboard.png)
@@ -57,7 +59,9 @@ New to the code? [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) gives a quick tour
 
 ## Live demo
 
-TextPulse is deployed automatically to a free Hugging Face Space by GitHub Actions, which also keep it awake. Setup and details: [docs/DEPLOY.md](docs/DEPLOY.md).
+**[shubham2019-textpulse.hf.space](https://shubham2019-textpulse.hf.space)**
+
+The live site is a free Hugging Face static Space, deployed automatically by GitHub Actions on every push. There is no server behind it: `scripts/export_for_browser.py` exports both trained models to JSON, and `app/static/engine.js` runs the same TF-IDF and logistic regression maths in the visitor's browser (checked to agree with scikit-learn on 100% of 6,000 test messages). That makes it free and always on, with no sleeping. Run locally, the same dashboard talks to the FastAPI server instead. Setup and details: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Quick start
 
@@ -107,7 +111,8 @@ Interactive API documentation is generated automatically at `http://127.0.0.1:80
 textpulse/
 ├── app/
 │   ├── main.py            FastAPI server, REST API and real-time stream engine
-│   └── static/            dashboard: index.html, style.css, app.js, bundled Chart.js
+│   └── static/            dashboard: index.html, style.css, app.js, bundled Chart.js,
+│                          engine.js (runs the models in the browser on the live site)
 ├── src/
 │   ├── config.py          every path and setting in one place
 │   ├── clean_text.py      text cleaning
@@ -116,8 +121,11 @@ textpulse/
 │   └── analyzer.py        predicts and explains a single message
 ├── scripts/
 │   ├── download_data.py   fetches the datasets
-│   └── benchmark.py       scores every record and measures speed
-├── deploy/                Hugging Face settings, pinned versions and the deployed models
+│   ├── benchmark.py       scores every record and measures speed
+│   └── export_for_browser.py  exports the models to JSON for the live site
+├── deploy/
+│   ├── browser/           what the live static Space serves: exported models, test messages
+│   └── docker/            optional Docker Space (needs Hugging Face PRO): Dockerfile, pinned versions
 ├── tests/                 automated tests (pytest)
 ├── data/                  datasets go here (not committed; see data/README.md)
 ├── models/                trained models and scores (created by training)

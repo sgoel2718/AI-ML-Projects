@@ -5,6 +5,11 @@
 // 2. Open a WebSocket and receive every new result as it happens
 // 3. Update the numbers, charts and feed a few times per second
 // 4. Let the user analyse their own text
+//
+// Where the results come from: normally the FastAPI server (app/main.py).
+// On the live website there is no Python server, so index.html also loads
+// engine.js, which runs the same models inside the browser. Both offer the
+// same functions (see "api" below), so the rest of this file doesn't care.
 // ---------------------------------------------------------------------------
 
 const FEED_ROWS = 60;          // rows kept in the live feed table
@@ -171,30 +176,7 @@ function drawThroughput() {
 }
 
 // ---------------------------------------------------------------------------
-// Live connection (WebSocket). Reconnects automatically if the server restarts.
-// ---------------------------------------------------------------------------
-function setStatus(kind, text) {
-  $("status").className = `status ${kind}`;
-  $("status-text").textContent = text;
-}
-
-function connect() {
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  const socket = new WebSocket(`${protocol}://${location.host}/ws/live`);
-  socket.onopen = () => setStatus($("pause").dataset.paused === "true" ? "paused" : "live", $("pause").dataset.paused === "true" ? "Paused" : "Live");
-  socket.onmessage = (message) => {
-    const event = JSON.parse(message.data);
-    countEvent(event);
-    waitingEvents.push(event);
-  };
-  socket.onclose = () => {
-    setStatus("offline", "Offline, retrying");
-    setTimeout(connect, 2000);
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Controls
+// Talking to the server: plain fetch() calls and one WebSocket
 // ---------------------------------------------------------------------------
 async function post(url, body) {
   const response = await fetch(url, {
@@ -205,9 +187,49 @@ async function post(url, body) {
   return response.json();
 }
 
+const serverApi = {
+  name: "server",
+  status: () => fetch("/api/status").then((r) => r.json()),
+  metrics: () => fetch("/api/metrics").then((r) => r.json()),
+  analyze: (text) => post("/api/analyze", { text }),
+  setSpeed: (messagesPerSecond) => post("/api/stream/speed", { messages_per_second: messagesPerSecond }),
+  pause: () => post("/api/stream/pause"),
+  resume: () => post("/api/stream/resume"),
+  // Live connection (WebSocket). Reconnects automatically if the server restarts.
+  listen(onEvent, onOpen, onClose) {
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${protocol}://${location.host}/ws/live`);
+    socket.onopen = onOpen;
+    socket.onmessage = (message) => onEvent(JSON.parse(message.data));
+    socket.onclose = () => {
+      onClose();
+      setTimeout(() => serverApi.listen(onEvent, onOpen, onClose), 2000);
+    };
+  },
+};
+
+// The browser engine if engine.js was loaded (live website), else the server
+const api = window.TextPulseEngine || serverApi;
+
+function setStatus(kind, text) {
+  $("status").className = `status ${kind}`;
+  $("status-text").textContent = text;
+}
+
+function connect() {
+  api.listen(
+    (event) => { countEvent(event); waitingEvents.push(event); },
+    () => setPausedLook($("pause").dataset.paused === "true"),
+    () => setStatus("offline", "Offline, retrying"),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Controls
+// ---------------------------------------------------------------------------
 $("pause").addEventListener("click", async () => {
   const isPaused = $("pause").dataset.paused === "true";
-  await post(isPaused ? "/api/stream/resume" : "/api/stream/pause");
+  await (isPaused ? api.resume() : api.pause());
   setPausedLook(!isPaused);
 });
 
@@ -217,7 +239,7 @@ function setPausedLook(paused) {
   setStatus(paused ? "paused" : "live", paused ? "Paused" : "Live");
 }
 
-$("speed").addEventListener("change", () => post("/api/stream/speed", { messages_per_second: Number($("speed").value) }));
+$("speed").addEventListener("change", () => api.setSpeed(Number($("speed").value)));
 
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -241,7 +263,7 @@ $("analyze-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = $("analyze-text").value.trim();
   if (!text) return;
-  const results = await post("/api/analyze", { text });
+  const results = await api.analyze(text);
   const names = { spam: "Spam model", sentiment: "Sentiment model" };
   $("analyze-result").innerHTML = Object.entries(results).map(([task, r]) => `
     <div class="result">
@@ -277,7 +299,7 @@ function modelSection(title, m) {
 }
 
 async function loadModelCard() {
-  const metrics = await (await fetch("/api/metrics")).json();
+  const metrics = await api.metrics();
   let html = "";
   if (metrics.spam) html += modelSection("Spam detector", metrics.spam);
   if (metrics.sentiment) html += modelSection("Sentiment analyser", metrics.sentiment);
@@ -292,7 +314,8 @@ async function loadModelCard() {
 // Start-up
 // ---------------------------------------------------------------------------
 async function start() {
-  const status = await (await fetch("/api/status")).json();
+  if (api.name === "browser") setStatus("offline", "Loading models");
+  const status = await api.status();
   loadedModels = status.models;
   for (const task of loadedModels) Object.assign(totals[task], status.totals[task]);
   $("speed").value = String(status.speed);

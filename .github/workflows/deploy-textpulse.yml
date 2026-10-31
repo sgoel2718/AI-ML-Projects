@@ -1,4 +1,6 @@
-# Publishes TextPulse to a Hugging Face Space every time its code changes.
+# Publishes TextPulse to a free Hugging Face static Space every time its code changes.
+# The models run in the visitor's browser (app/static/engine.js), so the Space
+# needs no server: it is free and never goes to sleep.
 # One-time setup: textpulse/docs/DEPLOY.md
 
 name: Deploy TextPulse to Hugging Face
@@ -7,7 +9,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "textpulse/**"
+      - "textpulse/app/static/**"
+      - "textpulse/deploy/browser/**"
       - ".github/workflows/deploy-textpulse.yml"
   workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
 
@@ -35,12 +38,18 @@ jobs:
 
       - name: Put the Space together
         run: |
-          mkdir space
-          cp -r textpulse/app textpulse/src space/
-          cp textpulse/deploy/Dockerfile textpulse/deploy/requirements.txt textpulse/deploy/.dockerignore space/
-          cp textpulse/deploy/SPACE_README.md space/README.md
-          cp -r textpulse/deploy/models space/models
-          find space -name __pycache__ -prune -exec rm -rf {} +
+          mkdir -p space/static
+          # The dashboard files
+          cp -r textpulse/app/static/. space/static/
+          mv space/static/index.html space/index.html
+          # Static hosting: use relative paths, and load the in-browser engine before app.js
+          sed -i 's#"/static/#"static/#g' space/index.html
+          sed -i 's#<script src="static/app.js"></script>#<script src="static/engine.js"></script>\n  <script src="static/app.js"></script>#' space/index.html
+          grep -q 'static/engine.js' space/index.html || { echo "::error::Could not add engine.js to index.html"; exit 1; }
+          # The exported models, test messages and scores (scripts/export_for_browser.py)
+          cp -r textpulse/deploy/browser/data space/data
+          # The Space's settings (sdk: static) and description
+          cp textpulse/deploy/browser/SPACE_README.md space/README.md
           find space -type f | sort
 
       - name: Set up Python
@@ -59,17 +68,17 @@ jobs:
           space = os.environ["HF_SPACE"]
 
           # Creates the Space the first time; does nothing if it already exists
-          api.create_repo(space, repo_type="space", space_sdk="docker", exist_ok=True)
+          api.create_repo(space, repo_type="space", space_sdk="static", exist_ok=True)
 
-          # Upload everything. Old files in these folders that no longer exist are removed.
+          # Upload everything. Old files that no longer exist here are removed.
           api.upload_folder(
               folder_path="space",
               repo_id=space,
               repo_type="space",
               commit_message=f"Deploy from GitHub {os.environ['GITHUB_SHA'][:7]}",
-              delete_patterns=["app/**", "src/**", "models/**"],
+              delete_patterns=["*", "**/*"],
           )
           host = space.lower().replace("/", "-").replace("_", "-").replace(".", "-")
           print(f"Deployed. Space page: https://huggingface.co/spaces/{space}")
-          print(f"Live app (ready after the build, about 3-5 minutes): https://{host}.hf.space")
+          print(f"Live app: https://{host}.hf.space")
           EOF
