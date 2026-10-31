@@ -1,0 +1,24 @@
+# Datasets are large and owned by their publishers: download them instead
+data/*
+!data/README.md
+
+# Trained models are rebuilt with  python -m src.train
+models/*.joblib
+models/stream_*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets (never commit a Kaggle token)
+kaggle.json
+.env

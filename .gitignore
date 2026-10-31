@@ -1,0 +1,13 @@
+# Applies to every project. Each project folder can add its own rules.
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.env
+kaggle.json

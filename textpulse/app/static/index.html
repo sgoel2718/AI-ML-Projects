@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TextPulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Chart.js draws the two live line charts. It's saved in the project
+       (static/vendor) so the dashboard also works without internet. -->
+  <script src="/static/vendor/chart.umd.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path d="M5 17h5l3-8 5 15 3-9h6" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>
+        <h1>TextPulse</h1>
+        <p>Real-time spam and sentiment intelligence</p>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="status" id="status"><span class="dot"></span><span id="status-text">Connecting</span></span>
+      <label class="speed">Speed
+        <select id="speed">
+          <option value="5">5 msg/s</option>
+          <option value="20">20 msg/s</option>
+          <option value="50">50 msg/s</option>
+          <option value="100">100 msg/s</option>
+          <option value="200">200 msg/s</option>
+        </select>
+      </label>
+      <button id="pause" class="button" type="button">Pause stream</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- Headline numbers -->
+    <section class="kpis" aria-label="Live totals">
+      <div class="kpi"><span class="kpi-label">Messages analysed</span><span class="kpi-value" id="kpi-total">0</span><span class="kpi-note">this session</span></div>
+      <div class="kpi"><span class="kpi-label">Throughput</span><span class="kpi-value" id="kpi-rate">0</span><span class="kpi-note">messages / second</span></div>
+      <div class="kpi"><span class="kpi-label">Spam detected</span><span class="kpi-value spam-text" id="kpi-spam">–</span><span class="kpi-note" id="kpi-spam-note">of emails and SMS</span></div>
+      <div class="kpi"><span class="kpi-label">Positive tweets</span><span class="kpi-value positive-text" id="kpi-positive">–</span><span class="kpi-note" id="kpi-positive-note">of tweets</span></div>
+      <div class="kpi"><span class="kpi-label">Live accuracy</span><span class="kpi-value" id="kpi-accuracy">–</span><span class="kpi-note" id="kpi-accuracy-note">on unseen test data</span></div>
+    </section>
+
+    <!-- Live charts -->
+    <section class="charts">
+      <article class="card">
+        <header class="card-head"><h2>Spam rate</h2><span class="card-sub">share of messages flagged, last 60 seconds</span></header>
+        <div class="chart-box"><canvas id="spam-chart" aria-label="Spam rate chart"></canvas><p class="empty" id="spam-chart-empty" hidden>Spam model not trained yet.</p></div>
+      </article>
+      <article class="card">
+        <header class="card-head"><h2>Sentiment</h2><span class="card-sub">share of tweets that are positive, last 60 seconds</span></header>
+        <div class="chart-box"><canvas id="sentiment-chart" aria-label="Sentiment chart"></canvas><p class="empty" id="sentiment-chart-empty" hidden><span>Sentiment model not trained yet. Download Sentiment140 and run <code>python -m src.train</code>.</span></p></div>
+      </article>
+    </section>
+
+    <section class="lower">
+      <!-- Live feed -->
+      <article class="card feed-card">
+        <header class="card-head">
+          <h2>Live feed</h2>
+          <div class="tabs" role="tablist" aria-label="Filter feed">
+            <button type="button" class="tab" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="tab" data-filter="spam" aria-pressed="false">Spam model</button>
+            <button type="button" class="tab" data-filter="sentiment" aria-pressed="false">Sentiment model</button>
+          </div>
+        </header>
+        <div class="feed-scroll">
+          <table class="feed">
+            <thead><tr><th>Time</th><th>Source</th><th>Message</th><th>Prediction</th><th title="Matches the real label?">Check</th></tr></thead>
+            <tbody id="feed"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <aside class="side">
+        <!-- Try it yourself -->
+        <article class="card">
+          <header class="card-head"><h2>Analyse your own text</h2></header>
+          <form id="analyze-form" class="analyze">
+            <label for="analyze-text" class="visually-hidden">Message to analyse</label>
+            <textarea id="analyze-text" rows="4" maxlength="5000" placeholder="Paste an email, SMS or tweet…"></textarea>
+            <div class="samples">
+              <button type="button" class="chip" data-sample="URGENT: your account has been suspended. Verify your password now at http://secure-login.biz to avoid closure">Phishing</button>
+              <button type="button" class="chip" data-sample="Hi team, can we move tomorrow's sprint review to 3pm? I'll update the invite.">Work email</button>
+              <button type="button" class="chip" data-sample="Just got my exam results and I passed!! best day ever, thank you everyone">Happy tweet</button>
+              <button type="button" class="chip" data-sample="Flight delayed again, three hours stuck at the airport and no updates. worst service">Angry tweet</button>
+            </div>
+            <button type="submit" class="button primary">Analyse</button>
+          </form>
+          <div id="analyze-result" class="analyze-result" aria-live="polite"></div>
+        </article>
+
+        <!-- Model card -->
+        <article class="card">
+          <header class="card-head"><h2>Model card</h2><span class="card-sub">scores on held-out test data</span></header>
+          <div id="model-card" class="model-card"><p class="empty">Loading…</p></div>
+        </article>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Data: <a href="https://www.kaggle.com/datasets/kazanova/sentiment140" target="_blank" rel="noopener">Sentiment140</a> (Go, Bhayani &amp; Huang, 2009) ·
+    <a href="https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset" target="_blank" rel="noopener">SMS Spam Collection</a> (Almeida &amp; Hidalgo, UCI) ·
+    <a href="https://github.com/MWiechmann/enron_spam_data" target="_blank" rel="noopener">Enron-Spam</a> (Metsis et al., 2006). The stream replays test messages the models never saw in training.
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

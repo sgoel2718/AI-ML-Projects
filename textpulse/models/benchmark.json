@@ -1,0 +1,15 @@
+{
+  "records": 1635663,
+  "seconds": 42.5,
+  "records_per_second": 38525,
+  "by_task": {
+    "spam": {
+      "records": 35663,
+      "seconds": 9.0
+    },
+    "sentiment": {
+      "records": 1600000,
+      "seconds": 33.4
+    }
+  }
+}
