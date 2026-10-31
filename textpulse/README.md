@@ -55,6 +55,10 @@ flowchart LR
 
 New to the code? [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) gives a quick tour, and the full [code walkthrough](docs/CODE_WALKTHROUGH.md) ([PDF](docs/TextPulse-Code-Walkthrough.pdf)) explains every file line by line, using real values from the trained models.
 
+## Live demo
+
+TextPulse is deployed automatically to a free Hugging Face Space by GitHub Actions, which also keep it awake. Setup and details: [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Quick start
 
 You need Python 3.10 or newer. Using VS Code on Windows? Follow the click-by-click guide in [docs/RUN_IN_VSCODE.md](docs/RUN_IN_VSCODE.md). Otherwise, run these commands in **Anaconda Prompt** or a terminal.
@@ -113,6 +117,7 @@ textpulse/
 ├── scripts/
 │   ├── download_data.py   fetches the datasets
 │   └── benchmark.py       scores every record and measures speed
+├── deploy/                Hugging Face settings, pinned versions and the deployed models
 ├── tests/                 automated tests (pytest)
 ├── data/                  datasets go here (not committed; see data/README.md)
 ├── models/                trained models and scores (created by training)

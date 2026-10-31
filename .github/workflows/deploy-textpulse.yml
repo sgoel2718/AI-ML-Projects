@@ -1,0 +1,75 @@
+# Publishes TextPulse to a Hugging Face Space every time its code changes.
+# One-time setup: textpulse/docs/DEPLOY.md
+
+name: Deploy TextPulse to Hugging Face
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "textpulse/**"
+      - ".github/workflows/deploy-textpulse.yml"
+  workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
+
+# If two pushes happen close together, only deploy the newest one
+concurrency:
+  group: deploy-textpulse
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}   # a Hugging Face write token (kept secret)
+      HF_SPACE: ${{ vars.HF_SPACE }}      # e.g. your-username/textpulse
+    steps:
+      - name: Check the settings exist
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then
+            echo "::error::Add the HF_TOKEN secret and the HF_SPACE variable. See textpulse/docs/DEPLOY.md"
+            exit 1
+          fi
+
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Put the Space together
+        run: |
+          mkdir space
+          cp -r textpulse/app textpulse/src space/
+          cp textpulse/deploy/Dockerfile textpulse/deploy/requirements.txt textpulse/deploy/.dockerignore space/
+          cp textpulse/deploy/SPACE_README.md space/README.md
+          cp -r textpulse/deploy/models space/models
+          find space -name __pycache__ -prune -exec rm -rf {} +
+          find space -type f | sort
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Upload to Hugging Face
+        run: |
+          pip install --quiet "huggingface_hub>=0.25"
+          python - <<'EOF'
+          import os
+          from huggingface_hub import HfApi
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          space = os.environ["HF_SPACE"]
+
+          # Creates the Space the first time; does nothing if it already exists
+          api.create_repo(space, repo_type="space", space_sdk="docker", exist_ok=True)
+
+          # Upload everything. Old files in these folders that no longer exist are removed.
+          api.upload_folder(
+              folder_path="space",
+              repo_id=space,
+              repo_type="space",
+              commit_message=f"Deploy from GitHub {os.environ['GITHUB_SHA'][:7]}",
+              delete_patterns=["app/**", "src/**", "models/**"],
+          )
+          host = space.lower().replace("/", "-").replace("_", "-").replace(".", "-")
+          print(f"Deployed. Space page: https://huggingface.co/spaces/{space}")
+          print(f"Live app (ready after the build, about 3-5 minutes): https://{host}.hf.space")
+          EOF

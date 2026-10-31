@@ -16,9 +16,9 @@ Two text classifiers trained on **1.64 million real messages**, streamed live th
 | **Scale** | 1,635,663 records scored in 42.5 seconds |
 | **Data** | Sentiment140 (1.6M tweets), SMS Spam Collection, Enron-Spam |
 | **Stack** | Python, scikit-learn (TF-IDF, Naive Bayes, Logistic Regression), pandas, FastAPI, WebSockets, JavaScript, Chart.js, pytest |
-| **Highlights** | Real-time WebSocket stream, explainable predictions, model comparison, safe display mode for presentations, REST API with auto-generated docs |
+| **Highlights** | Real-time WebSocket stream, explainable predictions, model comparison, safe display mode for presentations, REST API with auto-generated docs, CI/CD deployment to Hugging Face with GitHub Actions |
 
-[Project README](textpulse/README.md) · [Code walkthrough](textpulse/docs/CODE_WALKTHROUGH.md) · [Run it in VS Code](textpulse/docs/RUN_IN_VSCODE.md)
+[Project README](textpulse/README.md) · [Code walkthrough](textpulse/docs/CODE_WALKTHROUGH.md) · [Run it in VS Code](textpulse/docs/RUN_IN_VSCODE.md) · [Live deployment](textpulse/docs/DEPLOY.md)
 
 ## Coming next
 
@@ -34,6 +34,7 @@ Each project lives in its own folder with its own README, `requirements.txt`, te
 
 ```
 AI-ML-Projects/
-├── README.md        this page
-└── textpulse/       real-time spam and sentiment dashboard
+├── README.md                 this page
+├── .github/workflows/        automatic deployment and keep-alive (GitHub Actions)
+└── textpulse/                real-time spam and sentiment dashboard
 ```
